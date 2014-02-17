@@ -1,2 +1,2 @@
-fe-app-srvr
+Bisnode Informatics Application Server
 ===========
