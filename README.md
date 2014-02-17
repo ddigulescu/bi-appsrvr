@@ -1,2 +1,2 @@
-Bisnode Informatics Application Server
+BI Frontend Application Server
 ===========
