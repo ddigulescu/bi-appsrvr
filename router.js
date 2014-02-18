@@ -1,26 +1,30 @@
-module.exports = (function () {
-	var routes = [];
+/**
+ * Routing middleware for Connect. 
+ * 
+ *
+ */
+module.exports.router = function () {
+	return new Router();
+}
 
-	return {
-		addRoute: addRoute,
-		router: router,
-		findRoute: findRoute
-	}
+function Router () {
+	this.routes = [];
+}
 
-	function router (req, res, next) {
-		var route = findRoute(req.url);
+Router.prototype = {
+	handler: function (req, res, next) {
+		var route = this.match(req.url);
 		if (route) {
-			console.log(req.url, route);
 			req.route = route;
+			route.handler(req, res, next);
+		} else {
+			next();
 		}
-		next();
-	}
-
-	function findRoute (url) {
+	},
+	match: function (url) {
 		var match;
-		for (var i = 0; i < routes.length; i++) {
-			
-			var rd = routes[i];
+		for (var i = 0; i < this.routes.length; i++) {
+			var rd = this.routes[i];
 			var regexp = new RegExp(rd.regexp);
 			
 			var match = url.match(regexp);
@@ -30,19 +34,24 @@ module.exports = (function () {
 				ps.forEach(function (item, idx) {
 					params[rd.params[idx]] = item;
 				});
-				console.log(url, params)
 				return {
 					path: rd.path,
-					params: params
+					params: params,
+					handler: rd.handler,
+					remaining: url.substring(rd.path.indexOf('*'))
 				}
 			}
 		}
-	}
-
-	function addRoute (path, handler) {
+	},
+	addRoute: function (path, handler) {
 		var parsed = makeRouteRegExp(path);
-		routes.push({ regexp: parsed.regexp, params: parsed.params, path: path, handler: handler, specificity: getSpecificity(path) });
-		routes = routes.sort(function (a, b) { return a.specificity < b.specificity ? 1 : a.specificity > b.specificity ? -1 : 0  });
+		this.routes.push({ 
+			regexp: parsed.regexp, 
+			params: parsed.params, 
+			path: path, 
+			handler: handler, 
+			specificity: getSpecificity(path) });
+		this.routes = this.routes.sort(function (a, b) { return a.specificity < b.specificity ? 1 : a.specificity > b.specificity ? -1 : 0  });
 
 		function makeRouteRegExp (path) {
 			var i = 0, params = [];
@@ -55,9 +64,8 @@ module.exports = (function () {
 		}
 
 		function getSpecificity (path) {
-			var pathCmpnts = path.split('/');
 			var specificity = 0;
-			pathCmpnts.forEach(function (path) {
+			path.split('/').forEach(function (path) {
 				specificity += 2;
 				if (path.indexOf('*') == -1) {
 					specificity += 1
@@ -65,7 +73,8 @@ module.exports = (function () {
 			});
 			return specificity;
 		}
-	}
+	},
+	removeRoute: function (url) {
 
-	function removeRoute () {}
-})();
+	}
+}

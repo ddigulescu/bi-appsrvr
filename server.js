@@ -1,10 +1,11 @@
-var connect = require('connect');
-var http	= require('http');
-var https	= require('https');
-var socketio = require('socket.io');
-var router	= require('./router.js');
+var connect 	= require('connect');
+var http		= require('http');
+var https		= require('https');
+var socketio 	= require('socket.io');
+var routermod	= require('./router.js');
 
 module.exports.run = run;
+module.exports.register = register;
 
 //
 // The following two functions are taken from the Openshift node.js sample app.
@@ -30,9 +31,9 @@ function terminator(sig) {
     });
 };
 
-
-
-
+function register (path, handler) {
+	router.addRoute(path, handler);
+}
 
 function authauth (config) {
 	return function authauth (req, res, next) {
@@ -53,9 +54,14 @@ function authauth (config) {
 	}
 }
 
+var router;
+
 
 function run (config) {
 	setupTerminationHandlers();
+
+	router = routermod.router();
+
 	var app = connect()
 			.use(connect.cookieParser())
 			.use(connect.session(config.session))
@@ -64,7 +70,9 @@ function run (config) {
 			.use(connect.csrf())
 			.use(authauth(config.authentication))
 			.use(connect.static(config.htdocsFolder))
-			.use(router.router);
+			.use(function (req, res, next) {
+				router.handler(req, res, next)
+			});
 
 	if (config.httpServer) {
 		var httpServer = http.createServer(app);
@@ -101,6 +109,7 @@ function run (config) {
 	
 	return {
 		app: app,
+		register: register,
 		httpIo: httpIo,
 		httpsIo: httpsIo
 	};
