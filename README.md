@@ -24,7 +24,7 @@ The HTTP/HTTPS servers are based on the excellent connect framework and come wit
    * CSRF (cross-site request forgery) protection
    * an authentication module
 
-Support for web sockets is enabled with socket.io. 
+Websockets are implemented using socket.io, servers listen to their HTTP/S server ports.
 
 ## Install
 

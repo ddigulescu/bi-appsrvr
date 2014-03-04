@@ -1,3 +1,5 @@
+"use strict";
+
 var connect 	= require('connect');
 var http		= require('http');
 var https		= require('https');
@@ -31,11 +33,17 @@ function terminator(sig) {
     });
 };
 
-function register (path, handler) {
-	router.addRoute(path, handler);
+/**
+ * @param {string} path
+ * @param {string} [method]
+ * @param {function} handler
+ */
+function register () {
+	router.addRoute.apply(router, arguments);
 }
 
 function authauth (config) {
+	var config = config || {};
 	return function authauth (req, res, next) {
 
 		if (!req.session.authenticated) {
@@ -56,7 +64,6 @@ function authauth (config) {
 
 var router;
 
-
 function run (config) {
 	setupTerminationHandlers();
 
@@ -65,10 +72,11 @@ function run (config) {
 	var app = connect()
 			.use(connect.cookieParser())
 			.use(connect.session(config.session))
-			.use(connect.bodyParser())
 			.use(connect.query())
-			.use(connect.csrf())
-			.use(authauth(config.authentication))
+			.use(connect.json())
+			.use(connect.urlencoded())
+			//.use(connect.csrf())
+			//.use(authauth(config.authentication))
 			.use(connect.static(config.htdocsFolder))
 			.use(function (req, res, next) {
 				router.handler(req, res, next)
@@ -76,13 +84,17 @@ function run (config) {
 
 	if (config.httpServer) {
 		var httpServer = http.createServer(app);
-		httpServer.listen(config.httpServer.port, config.httpServer.host);
+		httpServer.listen(config.httpServer.port, config.httpServer.host, function () {
+			console.log('HTTP server started.');
+		});
 	}
 
 	if (config.httpsServer) {
 		var httpsServer = https.createServer(config.httpsServer.config, app);	
-		httpsServer.listen(config.httpsServer.port, config.httpsServer.host);
-	}
+		httpsServer.listen(config.httpsServer.port, config.httpsServer.host, function () {
+			console.log('HTTPS server started.');
+		});
+	} 
 
 	if (config.websockets) {
 		if (config.httpServer) {
@@ -106,6 +118,8 @@ function run (config) {
 		});
 		return io;
 	}
+
+	console.log('bi-appsrvr started.');
 	
 	return {
 		app: app,

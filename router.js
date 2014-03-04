@@ -1,8 +1,10 @@
 /**
- * Routing middleware for Connect. 
- * 
+ * Routing middleware for Connect.
  *
  */
+
+"use strict";
+
 module.exports.router = function () {
 	return new Router();
 }
@@ -13,7 +15,7 @@ function Router () {
 
 Router.prototype = {
 	handler: function (req, res, next) {
-		var route = this.match(req.url);
+		var route = this.match(req.url, req.method);
 		if (route) {
 			req.route = route;
 			route.handler(req, res, next);
@@ -21,12 +23,16 @@ Router.prototype = {
 			next();
 		}
 	},
-	match: function (url) {
+	match: function (url, method) {
 		var match;
 		for (var i = 0; i < this.routes.length; i++) {
 			var rd = this.routes[i];
-			var regexp = new RegExp(rd.regexp);
-			
+
+			if (rd.method !== method) {
+				continue;
+			}
+
+			var regexp = new RegExp(rd.regexp);			
 			var match = url.match(regexp);
 			if (match) {
 				var params = {}
@@ -35,22 +41,33 @@ Router.prototype = {
 					params[rd.params[idx]] = item;
 				});
 				return {
-					path: rd.path,
-					params: params,
-					handler: rd.handler,
-					remaining: url.substring(rd.path.indexOf('*'))
+					path: rd.path
+					,params: params
+					,handler: rd.handler
+					,remaining: url.substring(rd.path.indexOf('*'))
 				}
 			}
 		}
 	},
-	addRoute: function (path, handler) {
+
+	/**
+	 * @param {string} path
+	 * @param {string} [method]
+	 * @param {function} handler
+	 */
+	addRoute: function () {
+		var path = arguments[0];
+		var method = (typeof arguments[1] === 'string') ? arguments[1] : 'GET';
+		var handler = arguments[arguments.length - 1];
+
 		var parsed = makeRouteRegExp(path);
 		this.routes.push({ 
-			regexp: parsed.regexp, 
-			params: parsed.params, 
-			path: path, 
-			handler: handler, 
-			specificity: getSpecificity(path) });
+			regexp: parsed.regexp
+			,params: parsed.params
+			,path: path
+			,method: method.toUpperCase()
+			,handler: handler
+			,specificity: getSpecificity(path) });
 		this.routes = this.routes.sort(function (a, b) { return a.specificity < b.specificity ? 1 : a.specificity > b.specificity ? -1 : 0  });
 
 		function makeRouteRegExp (path) {
