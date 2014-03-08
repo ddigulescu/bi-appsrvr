@@ -52,11 +52,11 @@ function authauth (config) {
 				res.end();
 				return;
 			}
-			console.log('not authenticated');
+			//console.log('not authenticated');
 			req.session.authenticated = true;
 		}
 		if (req.session.authorized == false) {
-			console.log('not authorized');	
+			//console.log('not authorized');	
 		}
 	 	next();
 	}
@@ -85,14 +85,14 @@ function run (config) {
 	if (config.httpServer) {
 		var httpServer = http.createServer(app);
 		httpServer.listen(config.httpServer.port, config.httpServer.host, function () {
-			console.log('HTTP server started.');
+			//console.log('HTTP server started on %s:%d.', config.httpServer.host, config.httpServer.port);
 		});
 	}
 
 	if (config.httpsServer) {
 		var httpsServer = https.createServer(config.httpsServer.config, app);	
 		httpsServer.listen(config.httpsServer.port, config.httpsServer.host, function () {
-			console.log('HTTPS server started.');
+			//console.log('HTTPS server started  on %s:%d.', config.httpsServer.host, config.httpsServer.port);
 		});
 	} 
 
@@ -118,8 +118,6 @@ function run (config) {
 		});
 		return io;
 	}
-
-	console.log('bi-appsrvr started.');
 	
 	return {
 		app: app,
