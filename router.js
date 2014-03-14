@@ -5,6 +5,8 @@
 
 "use strict";
 
+var urlMod = require('url');
+
 module.exports.router = function () {
 	return new Router();
 }
@@ -15,7 +17,8 @@ function Router () {
 
 Router.prototype = {
 	handler: function (req, res, next) {
-		var route = this.match(req.url, req.method);
+		var urlObj = urlMod.parse(req.url);
+		var route = this.match(urlObj.pathname, req.method);
 		if (route) {
 			req.route = route;
 			route.handler(req, res, next);
