@@ -1,13 +1,17 @@
 "use strict";
 
-var connect 	= require('connect');
-var http		= require('http');
-var https		= require('https');
-var socketio 	= require('socket.io');
-var routermod	= require('./router.js');
+var express 		= require('express');
+var http			= require('http');
+var https			= require('https');
+var socketio 		= require('socket.io');
+//var passport 		= require('passport');
+//var LocalStrategy 	= require('passport-local').Strategy;
 
 module.exports.run = run;
-module.exports.register = register;
+//module.exports.passport = passport;
+
+
+
 
 //
 // The following two functions are taken from the Openshift node.js sample app.
@@ -33,15 +37,6 @@ function terminator(sig) {
     });
 };
 
-/**
- * @param {string} path
- * @param {string} [method]
- * @param {function} handler
- */
-function register () {
-	router.addRoute.apply(router, arguments);
-}
-
 function authauth (config) {
 	var config = config || {};
 	return function authauth (req, res, next) {
@@ -62,25 +57,20 @@ function authauth (config) {
 	}
 }
 
-var router;
-
 function run (config) {
 	setupTerminationHandlers();
 
-	router = routermod.router();
+	var app = express()
+			.use(express.cookieParser())
+			.use(express.session(config.session))			
+			.use(express.json())
+			.use(express.urlencoded())
+			//.use(express.multipart())
+			//.use(express.csrf())
+			.use(express.static(config.htdocsFolder));
 
-	var app = connect()
-			.use(connect.cookieParser())
-			.use(connect.session(config.session))
-			.use(connect.query())
-			.use(connect.json())
-			.use(connect.urlencoded())
-			//.use(connect.csrf())
-			//.use(authauth(config.authentication))
-			.use(connect.static(config.htdocsFolder))
-			.use(function (req, res, next) {
-				router.handler(req, res, next)
-			});
+
+ 	// [TBD] Should define an error handler as the last middleware. 
 
 	if (config.httpServer) {
 		var httpServer = http.createServer(app);
@@ -94,11 +84,15 @@ function run (config) {
 		httpsServer.listen(config.httpsServer.port, config.httpsServer.host, function () {
 			//console.log('HTTPS server started  on %s:%d.', config.httpsServer.host, config.httpsServer.port);
 		});
-	} 
+	}
 
 	if (config.websockets) {
 		if (config.httpServer) {
 			var httpIo = ioconf(httpServer);
+
+			httpIo.sockets.on('connection', function (socket) {
+				console.log('client connected!');
+			});
 		}
 		if (config.httpsServer) {
 			var httpsIo = ioconf(httpsServer);
@@ -119,10 +113,5 @@ function run (config) {
 		return io;
 	}
 	
-	return {
-		app: app,
-		register: register,
-		httpIo: httpIo,
-		httpsIo: httpsIo
-	};
+	return app;
 }
