@@ -4,14 +4,28 @@ var express 		= require('express');
 var http			= require('http');
 var https			= require('https');
 var socketio 		= require('socket.io');
-//var passport 		= require('passport');
-//var LocalStrategy 	= require('passport-local').Strategy;
+var passport 		= require('passport');
 
+
+module.exports.Authenticator = require('./lib/authenticate.js').Authenticator;
 module.exports.run = run;
-//module.exports.passport = passport;
+module.exports.renderView = renderView;
 
 
-
+function renderView (view, data, res, next) {
+	try {
+	    res.render(view, data, function (error, html) {
+	        if (error) {
+	        	next(error);
+	        } else {
+	            res.type('.html');
+	            res.end(html);
+	        }
+	    });
+	} catch (error) {
+		next(error);
+	}
+}
 
 //
 // The following two functions are taken from the Openshift node.js sample app.
@@ -37,26 +51,6 @@ function terminator(sig) {
     });
 };
 
-function authauth (config) {
-	var config = config || {};
-	return function authauth (req, res, next) {
-
-		if (!req.session.authenticated) {
-			if (config.always) {
-				res.statusCode = 401;
-				res.end();
-				return;
-			}
-			//console.log('not authenticated');
-			req.session.authenticated = true;
-		}
-		if (req.session.authorized == false) {
-			//console.log('not authorized');	
-		}
-	 	next();
-	}
-}
-
 function run (config) {
 	setupTerminationHandlers();
 
@@ -65,34 +59,99 @@ function run (config) {
 			.use(express.session(config.session))			
 			.use(express.json())
 			.use(express.urlencoded())
+
 			//.use(express.multipart())
 			//.use(express.csrf())
-			.use(express.static(config.htdocsFolder));
+			
+	if (config.authentication) {
+		if (config.authentication.strategy) {
+			passport.use(config.authentication.strategy);
+
+			var users = {};
+			passport.serializeUser(function(user, done) {
+				users[user.id] = user;
+				done(null, user);
+			});
+
+			passport.deserializeUser(function(user, done) {
+				done(null, users[user.id]);
+			});
+
+			app.use(passport.initialize());
+			app.use(passport.session());
+		}
+
+		app.get('/login', passport.authenticate('local', { failureRedirect: '/login' }));
+		app.get('/logout', function (req, res) {} );
+	}
+	
+	// Configure view engine.
+	if (config.views) {
+		var viewFolder = config.views.folder || './views';
+		app.set('views', viewFolder);
+		config.views.engines.forEach(function (keyval) {
+			for (var key in keyval) {
+				app.engine(key, keyval[key]);	
+			}
+		});
+	}
+	
+	//app.use(express.compress());
+
+	app.use(
+
+	 function compress (req, res, next){
+	 	console.log('YO!', req.url);
+    var accept = req.headers['accept-encoding']
+      , write = res.write
+      , end = res.end
+      , stream;
 
 
- 	// [TBD] Should define an error handler as the last middleware. 
+    res.write = function(chunk, encoding) {
+    	console.log(chunk.toString());
+    	write.call(res, chunk, encoding);
+    };
+
+    res.end = function(chunk, encoding){
+    	console.log('the end!');
+    	end.call(res);
+    };
+    next();
+
+
+	});
+
+	// Configure static http middleware. 
+	if (config.httpStatic && config.httpStatic.documentRoot) {
+		app.use(express.static(config.httpStatic.documentRoot));
+	}
+
+
+
+	// Common error handler middleware.
+	app.use(function (err, req, res, next) {
+		console.log(err)
+		res.redirect('/404.html');
+		res.end();
+	}); 	
 
 	if (config.httpServer) {
 		var httpServer = http.createServer(app);
-		httpServer.listen(config.httpServer.port, config.httpServer.host, function () {
-			//console.log('HTTP server started on %s:%d.', config.httpServer.host, config.httpServer.port);
-		});
+		httpServer.listen(config.httpServer.port, config.httpServer.host, function () {});
 	}
 
 	if (config.httpsServer) {
 		var httpsServer = https.createServer(config.httpsServer.config, app);	
-		httpsServer.listen(config.httpsServer.port, config.httpsServer.host, function () {
-			//console.log('HTTPS server started  on %s:%d.', config.httpsServer.host, config.httpsServer.port);
-		});
+		httpsServer.listen(config.httpsServer.port, config.httpsServer.host, function () {});
 	}
 
 	if (config.websockets) {
 		if (config.httpServer) {
 			var httpIo = ioconf(httpServer);
-
-			httpIo.sockets.on('connection', function (socket) {
-				console.log('client connected!');
-			});
+			// httpIo.sockets.on('connection', function (socket) {
+			// 	console.log('client connected!');
+			// });
 		}
 		if (config.httpsServer) {
 			var httpsIo = ioconf(httpsServer);
