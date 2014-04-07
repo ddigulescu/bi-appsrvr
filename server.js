@@ -6,11 +6,9 @@ var https			= require('https');
 var socketio 		= require('socket.io');
 var passport 		= require('passport');
 
-
-module.exports.Authenticator = require('./lib/authenticate.js').Authenticator;
-module.exports.run = run;
-module.exports.renderView = renderView;
-
+module.exports.Authenticator 	= require('./lib/authenticate.js').Authenticator;
+module.exports.run 				= run;
+module.exports.renderView 		= renderView;
 
 function renderView (view, data, res, next) {
 	try {
@@ -18,7 +16,6 @@ function renderView (view, data, res, next) {
 	        if (error) {
 	        	next(error);
 	        } else {
-	            res.type('.html');
 	            res.end(html);
 	        }
 	    });
@@ -39,7 +36,7 @@ function terminator(sig) {
     console.log('%s: Node server stopped.', Date(Date.now()) );
 };
 
- function setupTerminationHandlers() {
+function setupTerminationHandlers() {
     //  Process on exit and signals.
     process.on('exit', function() { terminator(); });
 
@@ -55,14 +52,14 @@ function run (config) {
 	setupTerminationHandlers();
 
 	var app = express()
-			.use(express.cookieParser())
-			.use(express.session(config.session))			
-			.use(express.json())
-			.use(express.urlencoded())
-
-			//.use(express.multipart())
-			//.use(express.csrf())
+		.use(express.cookieParser())
+		.use(express.session(config.session))			
+		.use(express.json())
+		.use(express.urlencoded())
+		//.use(express.multipart())
+		//.use(express.csrf())
 			
+	// Configure Passport authentication. 
 	if (config.authentication) {
 		if (config.authentication.strategy) {
 			passport.use(config.authentication.strategy);
@@ -81,7 +78,7 @@ function run (config) {
 			app.use(passport.session());
 		}
 
-		app.get('/login', passport.authenticate('local', { failureRedirect: '/login' }));
+		app.post('/login', passport.authenticate('local', { failureRedirect: '/login' }));
 		app.get('/logout', function (req, res) {} );
 	}
 	
@@ -95,57 +92,35 @@ function run (config) {
 			}
 		});
 	}
-	
-	//app.use(express.compress());
 
-	app.use(
-
-	 function compress (req, res, next){
-	 	console.log('YO!', req.url);
-    var accept = req.headers['accept-encoding']
-      , write = res.write
-      , end = res.end
-      , stream;
-
-
-    res.write = function(chunk, encoding) {
-    	console.log(chunk.toString());
-    	write.call(res, chunk, encoding);
-    };
-
-    res.end = function(chunk, encoding){
-    	console.log('the end!');
-    	end.call(res);
-    };
-    next();
-
-
-	});
+	// Create another app to have the application defined middlewares always before the static web server. 
+	var theApp = express();
+	app.use(theApp);
 
 	// Configure static http middleware. 
 	if (config.httpStatic && config.httpStatic.documentRoot) {
 		app.use(express.static(config.httpStatic.documentRoot));
 	}
 
-
-
 	// Common error handler middleware.
 	app.use(function (err, req, res, next) {
-		console.log(err)
 		res.redirect('/404.html');
 		res.end();
 	}); 	
 
+	// Configure HTTP server. 
 	if (config.httpServer) {
 		var httpServer = http.createServer(app);
 		httpServer.listen(config.httpServer.port, config.httpServer.host, function () {});
 	}
 
+	// Configure HTTPS server. 
 	if (config.httpsServer) {
 		var httpsServer = https.createServer(config.httpsServer.config, app);	
 		httpsServer.listen(config.httpsServer.port, config.httpsServer.host, function () {});
 	}
 
+	// Configure socket.io.
 	if (config.websockets) {
 		if (config.httpServer) {
 			var httpIo = ioconf(httpServer);
@@ -172,5 +147,5 @@ function run (config) {
 		return io;
 	}
 	
-	return app;
+	return theApp;
 }

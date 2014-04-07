@@ -6,7 +6,7 @@ This is the basic web application server used for web projects at Bisnode Inform
 
 ## Contents 
 
-The bi-appsrvr includes: 
+The bi-appsrvr includes:
 
    * an HTTP server
    * an HTTPS server

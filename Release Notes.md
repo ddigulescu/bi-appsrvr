@@ -1,16 +1,22 @@
-# Release Notes 0.3
+# Release Notes
 
-   * Changed config key for static HTTP server setup, see the example.
-   * Added authentication via Passport.js, different authentication strategies may be used.
-   * Added default routes and behavior to implement application login. 
-   * Added default authentication middleware functions, see authenticate.js.
-   * Added views, via consolidate any template engine can be used. 
+## 0.2.2
+
+   * User-defined routes are registered in a dedicated app and evaluated before the static server 
+     middleware, authentication can now be used for static servers.
+   * Changed login handler to POST method.
+
+## 0.2.1
+
    * Added a default error handler.
    * Added support for 404 behavior.
-   * Added I18N: responses are filtered for L10N string occurrences.
-   * Added logging: the server will now use a logger instance (with default log methods).
+   * Changed config key for static HTTP server setup, see the example.
+   * Added views, via consolidate any template engine can be used. 
 
-# Release Notes 0.2
+## 0.2
 
    * Migrated from connect to express framework. 
    * Switched off the custom routing engine. 
+   * Added authentication via Passport.js, different authentication strategies may be used.
+   * Added default routes and behavior to implement application login. 
+   * Added default authentication middleware functions, see authenticate.js.
