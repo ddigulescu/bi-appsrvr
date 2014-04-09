@@ -1,5 +1,9 @@
 # Release Notes
 
+## 0.2.3
+
+   * Added configuration checks: the server gives a message, then exits on missing keys.
+
 ## 0.2.2
 
    * User-defined routes are registered in a dedicated app and evaluated before the static server 

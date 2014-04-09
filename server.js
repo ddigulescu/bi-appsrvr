@@ -5,6 +5,7 @@ var http			= require('http');
 var https			= require('https');
 var socketio 		= require('socket.io');
 var passport 		= require('passport');
+var fs 				= require('fs');
 
 module.exports.Authenticator 	= require('./lib/authenticate.js').Authenticator;
 module.exports.run 				= run;
@@ -23,6 +24,11 @@ function renderView (view, data, res, next) {
 		next(error);
 	}
 }
+
+function getPageMaster () {
+
+}
+
 
 //
 // The following two functions are taken from the Openshift node.js sample app.
@@ -52,12 +58,20 @@ function run (config) {
 	setupTerminationHandlers();
 
 	var app = express()
-		.use(express.cookieParser())
-		.use(express.session(config.session))			
+		.use(express.cookieParser())			
 		.use(express.json())
 		.use(express.urlencoded())
 		//.use(express.multipart())
 		//.use(express.csrf())
+	
+	// Configure sessions.
+	if (config.session) {
+		if (config.session.secret) {
+			app.use(express.session(config.session));
+		} else {
+			errorAndExit('Missing configuration key "session.secret".');
+		}
+	}
 			
 	// Configure Passport authentication. 
 	if (config.authentication) {
@@ -76,6 +90,8 @@ function run (config) {
 
 			app.use(passport.initialize());
 			app.use(passport.session());
+		} else {
+			errorAndExit('Missing configuration key "authentication.strategy".');
 		}
 
 		app.post('/login', passport.authenticate('local', { failureRedirect: '/login' }));
@@ -84,7 +100,7 @@ function run (config) {
 	
 	// Configure view engine.
 	if (config.views) {
-		var viewFolder = config.views.folder || './views';
+		var viewFolder = config.views.folder || 'views';
 		app.set('views', viewFolder);
 		config.views.engines.forEach(function (keyval) {
 			for (var key in keyval) {
@@ -99,23 +115,46 @@ function run (config) {
 
 	// Configure static http middleware. 
 	if (config.httpStatic && config.httpStatic.documentRoot) {
-		app.use(express.static(config.httpStatic.documentRoot));
+		if (config.httpStatic.documentRoot) {
+			fs.open(config.httpStatic.documentRoot, 'r', function (error, stats) {
+				if (error) {
+					errorAndExit('Static HTTP document folder could not be found.');					
+				} else {
+					app.use(express.static(config.httpStatic.documentRoot));
+				}
+			});
+		} else {
+			errorAndExit('Missing configuration key "httpStatic.documentRoot".');
+		}
+		
 	}
 
-	// Common error handler middleware.
+	// Common error middleware.
 	app.use(function (err, req, res, next) {
 		res.redirect('/404.html');
 		res.end();
-	}); 	
+	});
 
 	// Configure HTTP server. 
 	if (config.httpServer) {
 		var httpServer = http.createServer(app);
+		if (!config.httpServer.port) {
+			errorAndExit('Missing configuration key "httpServer.port".');	
+		}
+		if (!config.httpServer.host) {
+			errorAndExit('Missing configuration key "httpServer.host".');	
+		}
 		httpServer.listen(config.httpServer.port, config.httpServer.host, function () {});
 	}
 
 	// Configure HTTPS server. 
 	if (config.httpsServer) {
+		if (!config.httpsServer.port) {
+			errorAndExit('Missing configuration key "httpsServer.port".');
+		}
+		if (!config.httpsServer.host) {
+			errorAndExit('Missing configuration key "httpsServer.host".');	
+		}
 		var httpsServer = https.createServer(config.httpsServer.config, app);	
 		httpsServer.listen(config.httpsServer.port, config.httpsServer.host, function () {});
 	}
@@ -124,9 +163,6 @@ function run (config) {
 	if (config.websockets) {
 		if (config.httpServer) {
 			var httpIo = ioconf(httpServer);
-			// httpIo.sockets.on('connection', function (socket) {
-			// 	console.log('client connected!');
-			// });
 		}
 		if (config.httpsServer) {
 			var httpsIo = ioconf(httpsServer);
@@ -137,15 +173,24 @@ function run (config) {
 		var io = socketio.listen(server)
 		io.configure(function () {
 			if (config.websockets.authorization) {
+				// [TBD] Type check? 
 				io.set('authorization', config.websockets.authorization);	
 			}
 			if (config.websockets.clientETag) {
 				io.enable('browser client etag');	
 			}
-		    io.set('log level', config.websockets.log.level);
+			if (config.websockets.log) {
+				io.set('log level', config.websockets.log.level);
+			}
+		    
 		});
 		return io;
 	}
 	
 	return theApp;
+}
+
+function errorAndExit (msg) {
+	console.error(msg);
+	process.exit(1);	
 }
