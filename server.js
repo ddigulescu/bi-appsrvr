@@ -161,12 +161,20 @@ function run (config) {
 
 	// Configure socket.io.
 	if (config.websockets) {
+		theApp.socketio = {};
 		if (config.httpServer) {
 			var httpIo = ioconf(httpServer);
+			theApp.socketio.http = httpIo;
 		}
 		if (config.httpsServer) {
 			var httpsIo = ioconf(httpsServer);
+			theApp.socketio.https = httpsIo;
 		}
+	}
+
+	// Configure logging.
+	if (config.logging) {
+		
 	}
 
 	function ioconf (server) {
