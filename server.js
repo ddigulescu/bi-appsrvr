@@ -58,7 +58,7 @@ function run (config) {
 	setupTerminationHandlers();
 
 	var app = express()
-		.use(express.cookieParser())			
+		.use(express.cookieParser())		
 		.use(express.json())
 		.use(express.urlencoded())
 		//.use(express.multipart())
@@ -163,12 +163,10 @@ function run (config) {
 	if (config.websockets) {
 		theApp.socketio = {};
 		if (config.httpServer) {
-			var httpIo = ioconf(httpServer);
-			theApp.socketio.http = httpIo;
+			theApp.socketio.http = ioconf(httpServer);
 		}
 		if (config.httpsServer) {
-			var httpsIo = ioconf(httpsServer);
-			theApp.socketio.https = httpsIo;
+			theApp.socketio.https = ioconf(httpsServer);
 		}
 	}
 
