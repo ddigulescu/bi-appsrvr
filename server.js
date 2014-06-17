@@ -6,10 +6,12 @@ var https			= require('https');
 var socketio 		= require('socket.io');
 var passport 		= require('passport');
 var fs 				= require('fs');
+var util 			= require('util');
 
 module.exports.Authenticator 	= require('./lib/authenticate.js').Authenticator;
 module.exports.run 				= run;
 module.exports.renderView 		= renderView;
+module.exports.passport 		= passport;
 
 function renderView (view, data, res, next) {
 	try {
@@ -93,9 +95,6 @@ function run (config) {
 		} else {
 			errorAndExit('Missing configuration key "authentication.strategy".');
 		}
-
-		app.post('/login', passport.authenticate('local', { failureRedirect: '/login' }));
-		app.get('/logout', function (req, res) {} );
 	}
 	
 	// Configure view engine.
@@ -131,20 +130,27 @@ function run (config) {
 
 	// Common error middleware.
 	app.use(function (err, req, res, next) {
+		console.log(err);
 		res.redirect('/404.html');
 		res.end();
 	});
 
 	// Configure HTTP server. 
 	if (config.httpServer) {
-		var httpServer = http.createServer(app);
+		
 		if (!config.httpServer.port) {
 			errorAndExit('Missing configuration key "httpServer.port".');	
 		}
 		if (!config.httpServer.host) {
 			errorAndExit('Missing configuration key "httpServer.host".');	
 		}
-		httpServer.listen(config.httpServer.port, config.httpServer.host, function () {});
+		var httpServer = http.createServer(app);
+		httpServer.listen(config.httpServer.port, config.httpServer.host);
+		httpServer.on('error', function (e) {
+  			if (e.code == 'EADDRINUSE') {
+  				errorAndExit(util.format('Address %s:%s already in use.', config.httpServer.host, config.httpServer.port));
+			}
+		});
 	}
 
 	// Configure HTTPS server. 
@@ -156,7 +162,12 @@ function run (config) {
 			errorAndExit('Missing configuration key "httpsServer.host".');	
 		}
 		var httpsServer = https.createServer(config.httpsServer.config, app);	
-		httpsServer.listen(config.httpsServer.port, config.httpsServer.host, function () {});
+		httpsServer.listen(config.httpsServer.port, config.httpsServer.host);
+		httpServer.on('error', function (e) {
+  			if (e.code == 'EADDRINUSE') {
+  				errorAndExit(util.format('Address %s:%s already in use.', config.httpsServer.host, config.httpsServer.port));
+			}
+		});
 	}
 
 	// Configure socket.io.

@@ -70,6 +70,10 @@ app.get('/view/:view', function (req, res, next) {
     server.renderView(view, {msg: 'Hello World!'}, res, next);
 });
 
+// When using Passport, you MUST use the Passport instance exported by the server!
+app.post('/login', server.passport.authenticate('local', { failureRedirect: '/login' }));
+app.get('/logout', function (req, res) {} );
+
 // socket.io handler.
 app.socketio.http.on('connection', function (socket) {
 	setTimeout(function () {
