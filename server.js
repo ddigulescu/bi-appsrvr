@@ -7,6 +7,10 @@ var socketio 		= require('socket.io');
 var passport 		= require('passport');
 var fs 				= require('fs');
 var util 			= require('util');
+var cookieParser 	= require('cookie-parser');
+var bodyParser 		= require('body-parser');
+var session      	= require('express-session');
+var busboy 			= require('connect-busboy');
 
 module.exports.Authenticator 	= require('./lib/authenticate.js').Authenticator;
 module.exports.run 				= run;
@@ -60,16 +64,14 @@ function run (config) {
 	setupTerminationHandlers();
 
 	var app = express()
-		.use(express.cookieParser())		
-		.use(express.json())
-		.use(express.urlencoded())
-		//.use(express.multipart())
+		.use(cookieParser())		
+		.use(bodyParser())
+		.use(busboy())
 		//.use(express.csrf())
-	
 	// Configure sessions.
 	if (config.session) {
 		if (config.session.secret) {
-			app.use(express.session(config.session));
+			app.use(session(config.session));
 		} else {
 			errorAndExit('Missing configuration key "session.secret".');
 		}

@@ -1,6 +1,6 @@
 {
   "name": "bi-appsrvr",
-  "version": "0.2.6",
+  "version": "0.2.7",
   "description": "The Bisnode Informatics frontend application server",
   "main": "./server",
   "scripts": {
@@ -10,14 +10,20 @@
   "license": "BSD 3-Clause",
   "dependencies": {
     "socket.io": "~0.9.16",
-    "express": "~3.5.1",
     "passport": "~0.2.0",
     "winston": "~0.7.3",
-    "cheerio": "~0.15.0"
+    "cheerio": "~0.15.0",
+    "express": "~4.4.3",
+    "cookie-parser": "~1.3.1",
+    "body-parser": "~1.3.1",
+    "express-session": "~1.4.0",
+    "connect-busboy": "0.0.1",
+    "morgan": "~1.1.1"
   },
   "devDependencies": {
     "consolidate": "~0.10.0",
     "underscore": "~1.6.0",
-    "passport-local": "~1.0.0"
+    "passport-local": "~1.0.0",
+    "supertest": "~0.13.0"
   }
 }
