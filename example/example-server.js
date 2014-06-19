@@ -1,5 +1,11 @@
+"use strict";
+
+//
+// Requiring ../server.js is only valid from within the example folder.
+// When requiring the bi-appsrvr module as a dependency, use require('bi-appsrvr').
 var server	= require('../server.js');
 var fs 		= require('fs');
+var path 	= require('path');
 
 var consolidate 	= require('consolidate');
 var underscore 		= require('underscore');
@@ -28,17 +34,17 @@ var config = {
 		"host": process.env.OPENSHIFT_NODEJS_IP || "127.0.0.1",
 		"port": process.env.OPENSHIFT_NODEJS_PORT || 1337
 	},
-//	"httpsServer": {
-//	 	"host": "127.0.0.1",
-//	 	"port": 8081,
-//	 	"config": {
-//	 		"key": fs.readFileSync('./key.pem'),
-//	 		"cert": fs.readFileSync('./cert.pem'),
-//	 		"passphrase": "qwer1234"
-//	 	}
-//	},
+	"httpsServer": {
+	 	"host": "127.0.0.1",
+	 	"port": 8081,
+	 	"ssl": {
+	 		"key": fs.readFileSync('./key.pem'),
+	 		"cert": fs.readFileSync('./cert.pem'),
+	 		"passphrase": "qwer1234"
+	 	}
+	},
 	"httpStatic": {
-		"documentRoot": "www"
+		"documentRoot": path.resolve(__dirname, "www")
 	}
 	,"session": {
 		"secret": "sessionSecret"

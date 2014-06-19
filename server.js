@@ -41,8 +41,7 @@ function getPageMaster () {
 //
 function terminator(sig) {
     if (typeof sig === "string") {
-       console.log('%s: Received %s - terminating app ...',
-                   Date(Date.now()), sig);
+       console.log('%s: Received %s - terminating app ...', Date(Date.now()), sig);
        process.exit(1);
     }
     console.log('%s: Node server stopped.', Date(Date.now()) );
@@ -66,8 +65,9 @@ function run (config) {
 	var app = express()
 		.use(cookieParser())		
 		.use(bodyParser())
-		.use(busboy())
+		.use(busboy());
 		//.use(express.csrf())
+		
 	// Configure sessions.
 	if (config.session) {
 		if (config.session.secret) {
@@ -110,11 +110,22 @@ function run (config) {
 		});
 	}
 
+	//
 	// Create another app to have the application defined middlewares always before the static web server. 
+	// 
 	var theApp = express();
 	app.use(theApp);
 
+	//
+	// This default route is required for servers that are static only and have no handlers defined.
+	// 
+	theApp.get('/', function (req, res, next) {
+		next();
+	});
+
+	//
 	// Configure static http middleware. 
+	// 
 	if (config.httpStatic && config.httpStatic.documentRoot) {
 		if (config.httpStatic.documentRoot) {
 			fs.open(config.httpStatic.documentRoot, 'r', function (error, stats) {
@@ -126,18 +137,23 @@ function run (config) {
 			});
 		} else {
 			errorAndExit('Missing configuration key "httpStatic.documentRoot".');
-		}
-		
+		}	
 	}
 
+	
+
+	//
 	// Common error middleware.
+	// 
 	app.use(function (err, req, res, next) {
 		console.log(err);
 		res.redirect('/404.html');
 		res.end();
 	});
 
+	//
 	// Configure HTTP server. 
+	// 
 	if (config.httpServer) {
 		
 		if (!config.httpServer.port) {
@@ -155,7 +171,9 @@ function run (config) {
 		});
 	}
 
+	//
 	// Configure HTTPS server. 
+	// 
 	if (config.httpsServer) {
 		if (!config.httpsServer.port) {
 			errorAndExit('Missing configuration key "httpsServer.port".');
@@ -172,7 +190,9 @@ function run (config) {
 		});
 	}
 
+	//
 	// Configure socket.io.
+	// 
 	if (config.websockets) {
 		theApp.socketio = {};
 		if (config.httpServer) {
@@ -183,7 +203,9 @@ function run (config) {
 		}
 	}
 
+	//
 	// Configure logging.
+	// 
 	if (config.logging) {
 		
 	}
