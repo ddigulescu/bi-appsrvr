@@ -1,0 +1,13 @@
+<html>
+	<head>
+		<script src="/socket.io/socket.io.js"></script>
+		<script>
+		var socket = io('http://localhost');
+		socket.on('news', function (msg) {
+			console.log('received news', msg);
+		});
+		</script>
+	</head>
+	<body>
+	</body>
+</html>

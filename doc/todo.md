@@ -5,5 +5,4 @@
    * Websocket authentication.
    * Request logging.
    * Application logging with separate error/default logging.
-   * File upload.
    * HTTP/HTTPS switch/force.

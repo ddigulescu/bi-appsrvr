@@ -11,11 +11,238 @@ var cookieParser 	= require('cookie-parser');
 var bodyParser 		= require('body-parser');
 var session      	= require('express-session');
 var busboy 			= require('connect-busboy');
+var morgan 			= require('morgan');
+var errorhandler 	= require('errorhandler');
+var path 			= require('path');
 
 module.exports.Authenticator 	= require('./lib/authenticate.js').Authenticator;
-module.exports.run 				= run;
-module.exports.renderView 		= renderView;
 module.exports.passport 		= passport;
+module.exports.Server 			= server;
+
+//module.exports.renderView 		= renderView;
+
+function server (config) {
+
+	setupTerminationHandlers();
+
+	var app;
+	var httpServer;
+	var httpsServer;
+	var config;
+
+	return {
+		configure: configure
+		,start: start
+		,stop: stop
+	}
+
+	function stop () {
+		if (httpServer) {
+			httpServer.close();
+		}
+		if (httpsServer) {
+			httpsServer.close();
+		}
+	}
+
+	function start (cb) {
+		var Page500Exists = fs.existsSync(path.resolve(config.documentRoot, '500.html'));
+		var Page404Exists = fs.existsSync(path.resolve(config.documentRoot, '404.html'));
+
+		// 404 handler.
+		app.use(function (req, res, next) {
+				res.status(404);
+				if (Page404Exists) {
+					res.redirect('/404.html');
+				} else {
+					res.end('Page not found.');	
+				}
+				
+		});
+
+		// Error handler.
+		if (config.runMode === 'development') {
+			app.use(errorhandler());
+		} else {
+			app.use(function (err, req, res, next) {
+				res.status(500);
+				if (Page500Exists) {
+					res.redirect('/500.html');
+				} else {
+					res.end('Internal server error.');
+				}
+			});	
+		}
+
+		var c = httpServer && httpsServer ? 2 : 1;
+		if (httpServer) {
+			httpServer.listen(config.httpServer.port, config.httpServer.host, function () {
+				console.log('%s: HTTP server %s:%s started.', Date(Date.now()), config.httpServer.host, config.httpServer.port);
+				callback(--c);
+			});
+		}
+		if (httpsServer) {
+			httpsServer.listen(config.httpsServer.port, config.httpsServer.host, function () {
+				console.log('%s: HTTPS server %s:%s started.', Date(Date.now()), config.httpsServer.host, config.httpsServer.port);
+				callback(--c);
+			});
+		}
+
+		function callback () {
+			if (cb && c === 0) {
+				cb();
+			}
+		}
+	}
+
+	function configure (cfg) {
+		config = cfg;
+		app = express();
+		app.disable('x-powered-by');
+		
+		app
+			.use(cookieParser())		
+			.use(bodyParser())
+			.use(busboy());
+			//.use(express.csrf())
+			
+		// Configure cookie sessions.
+		// [TBD]
+		if (config.cookieSession) {
+			if (config.cookieSession.secret) {
+				app.use(session(config.cookieSession));
+			} else {
+				configError('Missing configuration key "session.secret".');
+			}
+		}
+				
+		// Configure Passport authentication. 
+		if (config.authentication) {
+			if (config.authentication.strategy) {
+				passport.use(config.authentication.strategy);
+
+				var users = {};
+				passport.serializeUser(function(user, done) {
+					users[user.id] = user;
+					done(null, user);
+				});
+
+				passport.deserializeUser(function(user, done) {
+					done(null, users[user.id]);
+				});
+
+				app.use(passport.initialize());
+				app.use(passport.session());
+			} else {
+				configError('Missing configuration key "authentication.strategy".');
+			}
+		}
+		
+		// Configure view engine.
+		if (config.views) {
+			var viewFolder = config.views.folder || 'views';
+			app.set('views', viewFolder);
+			config.views.engines.forEach(function (keyval) {
+				for (var key in keyval) {
+					app.engine(key, keyval[key]);	
+				}
+			});
+		}
+
+		// Configure static HTTP middleware. 
+		if (config.documentRoot) {
+			fs.open(config.documentRoot, 'r', function (error, stats) {
+				if (error) {
+					configError('Document root folder could not be found.');					
+				} else {
+					app.use(express.static(config.documentRoot));
+				}
+			});
+		}
+
+		// Configure request logging.
+		if (config.requestLog) {
+			app.use(morgan(config.requestLog));
+		}
+
+		// Configure HTTP[S] server. 
+		if (!config.httpServer && !config.httpsServer) {
+			config.httpServer = {
+				host: '127.0.0.1'
+				,port: 8080
+			};
+			httpServer = configureHttpServer(config.httpServer, app);
+		}
+		if (config.httpServer) {
+			httpServer = configureHttpServer(config.httpServer, app);
+		}
+		if (config.httpsServer) {
+			httpsServer = configureHttpServer(config.httpsServer, app)
+		}
+
+		// Configure socket.io.
+		if (config.websockets) {
+			app.socketio = {};
+			if (config.httpServer) {
+				app.socketio.http = configAndAttachSocketIO(config.websockets, httpServer);
+			}
+			if (config.httpsServer) {
+				app.socketio.https = configAndAttachSocketIO(config.websockets, httpsServer);
+			}
+		}
+
+		return app;
+	}
+}
+
+function configError (msg) {
+	console.error(msg);
+	process.exit(1);	
+}
+
+function configureHttpServer (config, app) {
+	var module = config.ssl ? https : http;
+	var type = config.ssl ? 'https' : 'http';
+	if (!config.port) {
+		configError(util.format('Missing configuration key "%sServer.port".'), type);	
+	}
+	if (!config.host) {
+		configError(util.format('Missing configuration key "%sServer.host".'), type);	
+	}
+	var server = module.createServer.apply(module, config.ssl ? [config.ssl, app] : [app]);
+	server.on('error', function (e) {
+		if (e.code == 'EADDRINUSE') {
+			configError(util.format('Address %s:%s already in use.', config.host, config.port));
+		}
+	});
+	return server;
+}
+
+function configAndAttachSocketIO (config, server) {
+	var ioServer = new socketio(config);
+	ioServer.attach(server)
+	return ioServer;
+}
+
+function setupTerminationHandlers() {
+    //  Process on exit and signals.
+    process.on('exit', function() { terminator(); });
+
+    // Removed 'SIGPIPE' from the list - bugz 852598.
+    ['SIGHUP', 'SIGINT', 'SIGQUIT', 'SIGILL', 'SIGTRAP', 'SIGABRT',
+     'SIGBUS', 'SIGFPE', 'SIGUSR1', 'SIGSEGV', 'SIGUSR2', 'SIGTERM'
+    ].forEach(function(element, index, array) {
+        process.on(element, function() { terminator(element); });
+    });
+
+    function terminator(sig) {
+	    if (typeof sig === "string") {
+	       console.log('%s: Received %s - terminating app ...', Date(Date.now()), sig);
+	       process.exit(1);
+	    }
+	    console.log('%s: Node server stopped.', Date(Date.now()) );
+	};
+};
 
 function renderView (view, data, res, next) {
 	try {
@@ -33,205 +260,4 @@ function renderView (view, data, res, next) {
 
 function getPageMaster () {
 
-}
-
-
-//
-// The following two functions are taken from the Openshift node.js sample app.
-//
-function terminator(sig) {
-    if (typeof sig === "string") {
-       console.log('%s: Received %s - terminating app ...', Date(Date.now()), sig);
-       process.exit(1);
-    }
-    console.log('%s: Node server stopped.', Date(Date.now()) );
-};
-
-function setupTerminationHandlers() {
-    //  Process on exit and signals.
-    process.on('exit', function() { terminator(); });
-
-    // Removed 'SIGPIPE' from the list - bugz 852598.
-    ['SIGHUP', 'SIGINT', 'SIGQUIT', 'SIGILL', 'SIGTRAP', 'SIGABRT',
-     'SIGBUS', 'SIGFPE', 'SIGUSR1', 'SIGSEGV', 'SIGUSR2', 'SIGTERM'
-    ].forEach(function(element, index, array) {
-        process.on(element, function() { terminator(element); });
-    });
-};
-
-function run (config) {
-	setupTerminationHandlers();
-
-	var app = express()
-		.use(cookieParser())		
-		.use(bodyParser())
-		.use(busboy());
-		//.use(express.csrf())
-		
-	// Configure sessions.
-	if (config.session) {
-		if (config.session.secret) {
-			app.use(session(config.session));
-		} else {
-			errorAndExit('Missing configuration key "session.secret".');
-		}
-	}
-			
-	// Configure Passport authentication. 
-	if (config.authentication) {
-		if (config.authentication.strategy) {
-			passport.use(config.authentication.strategy);
-
-			var users = {};
-			passport.serializeUser(function(user, done) {
-				users[user.id] = user;
-				done(null, user);
-			});
-
-			passport.deserializeUser(function(user, done) {
-				done(null, users[user.id]);
-			});
-
-			app.use(passport.initialize());
-			app.use(passport.session());
-		} else {
-			errorAndExit('Missing configuration key "authentication.strategy".');
-		}
-	}
-	
-	// Configure view engine.
-	if (config.views) {
-		var viewFolder = config.views.folder || 'views';
-		app.set('views', viewFolder);
-		config.views.engines.forEach(function (keyval) {
-			for (var key in keyval) {
-				app.engine(key, keyval[key]);	
-			}
-		});
-	}
-
-	//
-	// Create another app to have the application defined middlewares always before the static web server. 
-	// 
-	var theApp = express();
-	app.use(theApp);
-
-	//
-	// This default route is required for servers that are static only and have no handlers defined.
-	// 
-	theApp.get('/', function (req, res, next) {
-		next();
-	});
-
-	//
-	// Configure static http middleware. 
-	// 
-	if (config.httpStatic && config.httpStatic.documentRoot) {
-		if (config.httpStatic.documentRoot) {
-			fs.open(config.httpStatic.documentRoot, 'r', function (error, stats) {
-				if (error) {
-					errorAndExit('Static HTTP document folder could not be found.');					
-				} else {
-					app.use(express.static(config.httpStatic.documentRoot));
-				}
-			});
-		} else {
-			errorAndExit('Missing configuration key "httpStatic.documentRoot".');
-		}	
-	}
-
-	
-
-	//
-	// Common error middleware.
-	// 
-	app.use(function (err, req, res, next) {
-		console.log(err);
-		res.redirect('/404.html');
-		res.end();
-	});
-
-	//
-	// Configure HTTP server. 
-	// 
-	if (config.httpServer) {
-		
-		if (!config.httpServer.port) {
-			errorAndExit('Missing configuration key "httpServer.port".');	
-		}
-		if (!config.httpServer.host) {
-			errorAndExit('Missing configuration key "httpServer.host".');	
-		}
-		var httpServer = http.createServer(app);
-		httpServer.listen(config.httpServer.port, config.httpServer.host);
-		httpServer.on('error', function (e) {
-  			if (e.code == 'EADDRINUSE') {
-  				errorAndExit(util.format('Address %s:%s already in use.', config.httpServer.host, config.httpServer.port));
-			}
-		});
-	}
-
-	//
-	// Configure HTTPS server. 
-	// 
-	if (config.httpsServer) {
-		if (!config.httpsServer.port) {
-			errorAndExit('Missing configuration key "httpsServer.port".');
-		}
-		if (!config.httpsServer.host) {
-			errorAndExit('Missing configuration key "httpsServer.host".');	
-		}
-		var httpsServer = https.createServer(config.httpsServer.config, app);	
-		httpsServer.listen(config.httpsServer.port, config.httpsServer.host);
-		httpServer.on('error', function (e) {
-  			if (e.code == 'EADDRINUSE') {
-  				errorAndExit(util.format('Address %s:%s already in use.', config.httpsServer.host, config.httpsServer.port));
-			}
-		});
-	}
-
-	//
-	// Configure socket.io.
-	// 
-	if (config.websockets) {
-		theApp.socketio = {};
-		if (config.httpServer) {
-			theApp.socketio.http = ioconf(httpServer);
-		}
-		if (config.httpsServer) {
-			theApp.socketio.https = ioconf(httpsServer);
-		}
-	}
-
-	//
-	// Configure logging.
-	// 
-	if (config.logging) {
-		
-	}
-
-	function ioconf (server) {
-		var io = socketio.listen(server)
-		io.configure(function () {
-			if (config.websockets.authorization) {
-				// [TBD] Type check? 
-				io.set('authorization', config.websockets.authorization);	
-			}
-			if (config.websockets.clientETag) {
-				io.enable('browser client etag');	
-			}
-			if (config.websockets.log) {
-				io.set('log level', config.websockets.log.level);
-			}
-		    
-		});
-		return io;
-	}
-	
-	return theApp;
-}
-
-function errorAndExit (msg) {
-	console.error(msg);
-	process.exit(1);	
 }
