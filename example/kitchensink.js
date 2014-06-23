@@ -6,13 +6,13 @@
 
 // Please note: require('../server.js') is only valid from within the example folder.
 // When using the bi-appsrvr module in your own project, use require('bi-appsrvr').
-var biappsrvr	= require('../server.js');
-var fs 			= require('fs');
-var path 		= require('path');
+var biappsrvr   = require('../server.js');
+var fs          = require('fs');
+var path        = require('path');
 
-var consolidate 	= require('consolidate');
-var underscore 		= require('underscore');
-var LocalStrategy 	= require('passport-local').Strategy;
+var consolidate     = require('consolidate');
+var underscore      = require('underscore');
+var LocalStrategy   = require('passport-local').Strategy;
 
 var config = {
 	'runMode': 'prod'
@@ -21,7 +21,7 @@ var config = {
 	}
 	,'authentication': {
 		'strategy': new LocalStrategy(function (username, password, done) {
-			done(null, {id: username, username: username, password: password});	
+			done(null, {id: username, username: username, password: password}); 
 		})
 	}
 	,'websockets': {
@@ -32,13 +32,13 @@ var config = {
 		'port': process.env.OPENSHIFT_NODEJS_PORT || 8080
 	}
 	,'httpsServer': {
-	 	'host': '127.0.0.1',
-	 	'port': 8081,
-	 	'ssl': {
-	 		'key': fs.readFileSync(path.resolve(__dirname, 'ssl', 'key.pem')),
-	 		'cert': fs.readFileSync(path.resolve(__dirname, 'ssl', 'cert.pem')),
-	 		'passphrase': 'test'
-	 	}
+		'host': '127.0.0.1',
+		'port': 8081,
+		'ssl': {
+			'key': fs.readFileSync(path.resolve(__dirname, 'ssl', 'key.pem')),
+			'cert': fs.readFileSync(path.resolve(__dirname, 'ssl', 'cert.pem')),
+			'passphrase': 'test'
+		}
 	},
 	'documentRoot': path.resolve(__dirname, 'www')
 	,'cookieSession': {
@@ -78,8 +78,8 @@ app.get('/all*', biappsrvr.Authenticator.allowAll, function (req, res, next) {
 
 // Route GET /view/*. Get the matrix parameter from req.params. 
 app.get('/view/:view', function (req, res, next) {
-    var view = req.params.view;
-    server.renderView(view, {msg: 'Hello World!'}, res, next);
+	var view = req.params.view;
+	server.renderView(view, {msg: 'Hello World!'}, res, next);
 });
 
 // When using Passport, you MUST use the Passport instance exported by the server!
@@ -91,7 +91,7 @@ app.get('/logout', function (req, res, next) {
 
 // socket.io handler.
 // app.socketio.http.on('connection', function (socket) {
-// 	socket.emit('news', { hello: 'world' });
+//  socket.emit('news', { hello: 'world' });
 // });
 
 server.start(function () {});

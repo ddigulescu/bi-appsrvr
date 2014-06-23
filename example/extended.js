@@ -6,10 +6,10 @@
 
 // Please note: require('../server.js') is only valid from within the example folder.
 // When using the bi-appsrvr module in your own project, use require('bi-appsrvr').
-var biappsrvr 	= require('../server.js');
-var path 		= require('path');
+var biappsrvr   = require('../server.js');
+var path        = require('path');
 
-var args 		= biappsrvr.commandlineArguments();
+var args        = biappsrvr.commandlineArguments();
 
 
 

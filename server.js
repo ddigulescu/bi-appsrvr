@@ -1,25 +1,25 @@
 "use strict";
 
-var express 		= require('express');
-var http			= require('http');
-var https			= require('https');
-var socketio 		= require('socket.io');
-var passport 		= require('passport');
-var fs 				= require('fs');
-var util 			= require('util');
-var cookieParser 	= require('cookie-parser');
-var bodyParser 		= require('body-parser');
-var session      	= require('express-session');
-var busboy 			= require('connect-busboy');
-var morgan 			= require('morgan');
-var errorhandler 	= require('errorhandler');
-var path 			= require('path');
-var yargs		 	= require('yargs');
+var express         = require('express');
+var http            = require('http');
+var https           = require('https');
+var socketio        = require('socket.io');
+var passport        = require('passport');
+var fs              = require('fs');
+var util            = require('util');
+var cookieParser    = require('cookie-parser');
+var bodyParser      = require('body-parser');
+var session         = require('express-session');
+var busboy          = require('connect-busboy');
+var morgan          = require('morgan');
+var errorhandler    = require('errorhandler');
+var path            = require('path');
+var yargs           = require('yargs');
 
-module.exports.Authenticator 		= require('./lib/authenticate.js').Authenticator;
+module.exports.Authenticator        = require('./lib/authenticate.js').Authenticator;
 module.exports.commandlineArguments = commandlineArguments;
-module.exports.passport 			= passport;
-module.exports.Server 				= server;
+module.exports.passport             = passport;
+module.exports.Server               = server;
 
 function commandlineArguments () {
 	var args = yargs.usage('$0 --config configfile --mode [prod|test|dev]').argv;
@@ -59,13 +59,12 @@ function server (config) {
 
 		// 404 handler.
 		app.use(function (req, res, next) {
-				res.status(404);
-				if (Page404Exists) {
-					res.redirect('/404.html');
-				} else {
-					res.end('Page not found.');	
-				}
-				
+			res.status(404);
+			if (Page404Exists) {
+				res.redirect('/404.html');
+			} else {
+				res.end('Page not found.'); 
+			}   
 		});
 
 		// Error handler.
@@ -79,7 +78,7 @@ function server (config) {
 				} else {
 					res.end('Internal server error.');
 				}
-			});	
+			}); 
 		}
 
 		var c = httpServer && httpsServer ? 2 : 1;
@@ -109,7 +108,7 @@ function server (config) {
 		app.disable('x-powered-by');
 		
 		app
-			.use(cookieParser())		
+			.use(cookieParser())        
 			.use(bodyParser())
 			.use(busboy());
 			//.use(express.csrf())
@@ -152,7 +151,7 @@ function server (config) {
 			app.set('views', viewFolder);
 			config.views.engines.forEach(function (keyval) {
 				for (var key in keyval) {
-					app.engine(key, keyval[key]);	
+					app.engine(key, keyval[key]);   
 				}
 			});
 		}
@@ -161,7 +160,7 @@ function server (config) {
 		if (config.documentRoot) {
 			fs.open(config.documentRoot, 'r', function (error, stats) {
 				if (error) {
-					configError('Document root folder could not be found.');					
+					configError('Document root folder could not be found.');                    
 				} else {
 					app.use(express.static(config.documentRoot));
 				}
@@ -205,17 +204,17 @@ function server (config) {
 
 function configError (msg) {
 	console.error(msg);
-	process.exit(1);	
+	process.exit(1);    
 }
 
 function configureHttpServer (config, app) {
 	var module = config.ssl ? https : http;
 	var type = config.ssl ? 'https' : 'http';
 	if (!config.port) {
-		configError(util.format('Missing configuration key "%sServer.port".'), type);	
+		configError(util.format('Missing configuration key "%sServer.port".'), type);   
 	}
 	if (!config.host) {
-		configError(util.format('Missing configuration key "%sServer.host".'), type);	
+		configError(util.format('Missing configuration key "%sServer.host".'), type);   
 	}
 	var server = module.createServer.apply(module, config.ssl ? [config.ssl, app] : [app]);
 	server.on('error', function (e) {
@@ -233,34 +232,34 @@ function configAndAttachSocketIO (config, server) {
 }
 
 function setupTerminationHandlers() {
-    //  Process on exit and signals.
-    process.on('exit', function() { terminator(); });
+	//  Process on exit and signals.
+	process.on('exit', function() { terminator(); });
 
-    // Removed 'SIGPIPE' from the list - bugz 852598.
-    ['SIGHUP', 'SIGINT', 'SIGQUIT', 'SIGILL', 'SIGTRAP', 'SIGABRT',
-     'SIGBUS', 'SIGFPE', 'SIGUSR1', 'SIGSEGV', 'SIGUSR2', 'SIGTERM'
-    ].forEach(function(element, index, array) {
-        process.on(element, function() { terminator(element); });
-    });
+	// Removed 'SIGPIPE' from the list - bugz 852598.
+	['SIGHUP', 'SIGINT', 'SIGQUIT', 'SIGILL', 'SIGTRAP', 'SIGABRT',
+	 'SIGBUS', 'SIGFPE', 'SIGUSR1', 'SIGSEGV', 'SIGUSR2', 'SIGTERM'
+	].forEach(function(element, index, array) {
+		process.on(element, function() { terminator(element); });
+	});
 
-    function terminator(sig) {
-	    if (typeof sig === "string") {
-	       console.log('%s: Received %s - terminating app ...', Date(Date.now()), sig);
-	       process.exit(1);
-	    }
-	    console.log('%s: Node server stopped.', Date(Date.now()) );
+	function terminator(sig) {
+		if (typeof sig === "string") {
+		   console.log('%s: Received %s - terminating app ...', Date(Date.now()), sig);
+		   process.exit(1);
+		}
+		console.log('%s: Node server stopped.', Date(Date.now()) );
 	};
 };
 
 function renderView (view, data, res, next) {
 	try {
-	    res.render(view, data, function (error, html) {
-	        if (error) {
-	        	next(error);
-	        } else {
-	            res.end(html);
-	        }
-	    });
+		res.render(view, data, function (error, html) {
+			if (error) {
+				next(error);
+			} else {
+				res.end(html);
+			}
+		});
 	} catch (error) {
 		next(error);
 	}
