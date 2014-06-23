@@ -17,6 +17,8 @@
    * Added Morgan request log middleware.
    * socket.io upgraded to version 1.0.6.
    * The configuaration key 'session' was renamed to 'cookieSession'.
+   * Retrieve command line arguments with the 'commandlineArguments' function, uses the yargs module. 
+   * 
 
 ## 0.2.3
 

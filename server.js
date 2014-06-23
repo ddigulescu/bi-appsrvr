@@ -14,12 +14,20 @@ var busboy 			= require('connect-busboy');
 var morgan 			= require('morgan');
 var errorhandler 	= require('errorhandler');
 var path 			= require('path');
+var yargs		 	= require('yargs');
 
-module.exports.Authenticator 	= require('./lib/authenticate.js').Authenticator;
-module.exports.passport 		= passport;
-module.exports.Server 			= server;
+module.exports.Authenticator 		= require('./lib/authenticate.js').Authenticator;
+module.exports.commandlineArguments = commandlineArguments;
+module.exports.passport 			= passport;
+module.exports.Server 				= server;
 
-//module.exports.renderView 		= renderView;
+function commandlineArguments () {
+	var args = yargs.usage('$0 --config configfile --mode [prod|test|dev]').argv;
+	if ((args.config && typeof args.config !== 'string') || (args.mode && typeof args.mode !== 'string')) {
+		yargs.showHelp();
+	}
+	return args;
+}
 
 function server (config) {
 

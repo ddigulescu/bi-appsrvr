@@ -50,14 +50,16 @@ For handling internal server errors, the Express [errorhandler middleware](https
 
 ## Usage
 
-To use the bi-appsrvr, install it as a project dependency, just like Express. Express itself is not required as your project's dependency. To bootstrap your own project e.g. use:  
+To use the bi-appsrvr, install it as a project dependency, just like Express. Express itself is not required as your project's dependency. To bootstrap your own project use e.g.:  
 
     mkdir your_project_folder
     cd your_project_folder
     npm init
     npm install --save bi-appsrvr
 
-Then create your main server script, require the bi-appsrvr module, get a server instance, configure it, add your own routes and then start the server, e.g.
+npm's `--save` argument automatically adds the bi-appsrvr dependency to your package.json.
+
+Then create your main server script, e.g.:
 
     var biappsrvr = require('bi-appsrvr');
     var server = biappsrvr.Server();
@@ -71,11 +73,15 @@ Then create your main server script, require the bi-appsrvr module, get a server
         // The optional callback function is called when the server was successfully started. 
     });
 
-In the above example, `app` is the Express server instance, that you can use just like any other Express application.
+In the above example, `app` is the Express server instance, that you can use just like any other Express application. Please note that you should start the server after you've added your application's routes. Please see the next section for configuration options and the `/example` folder for working examples.
 
-Please see the examples for more information. 
+After you've created your server, simply start it with: 
+
+    node yourServer.js
 
 ## Server Configuration
+
+This section lists all available configuration options.
 
 <table>
    <tr>
@@ -104,7 +110,7 @@ Please see the examples for more information.
    </tr>
    <tr>
       <td>runMode</td>
-      <td>Sets the run mode of the server, may be <code>production</code> or <code>development</code>. The error handler middleware for displaying the stacktrace is only used when the server runs in development mode.</td>
+      <td>Sets the run mode of the server, may be <code>prod</code>, <code>test</code> or <code>dev</code> (default mode, if not set). The error handler middleware for displaying the stacktrace is only used when the server runs in development mode.</td>
    </tr>
    <tr>
       <td>views</td>
@@ -116,6 +122,19 @@ Please see the examples for more information.
    </tr>
 </table>
 
+## Application Configuration
+
+When writing your own applications, you'll most often need configuration values that are dependent of your environment, for instance, you'll use different a database or service endpoints in your test, QA or production environments. *DO NOT* define such values in your script, instead use a separate configuration file for each environment.
+
+bi-appsrvr comes with the (yargs)[https://github.com/chevex/yargs] command line parser, that you can access like this: 
+
+    var args = biappsrvr.commandlineArguments();
+    var mode = args.mode;
+    var configfile = args.config;
+
+In your server configuration, use the values from your config files. 
+
+Also you *SHOULD NOT* store your configuration file inside the project source folder. Use a separate repository instead. 
 
 ## Unit Test
 
